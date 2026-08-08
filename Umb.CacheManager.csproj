@@ -6,17 +6,40 @@
     <Nullable>enable</Nullable>
 
     <!-- Serve wwwroot/App_Plugins/** at /App_Plugins/** in the consuming site so the
-         Umbraco 17 backoffice discovers umbraco-package.json. -->
+         Umbraco backoffice discovers umbraco-package.json. -->
     <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
 
-    <!-- NuGet packaging so this can be reused in any Umbraco 17 site. -->
+    <!-- NuGet packaging so this can be reused in any Umbraco 17 or later site. -->
     <IsPackable>true</IsPackable>
     <PackageId>Umb.CacheManager</PackageId>
     
-    <Version>17.1.0</Version>
-    <Title>Cache Manager (Umbraco 17)</Title>
-    <Description>Umbraco 17 backoffice dashboard to view and clear the site's in-process caches (Umbraco RuntimeCache and ASP.NET Core IMemoryCache).</Description>
+    <Version>17.1.1</Version>
+    <Title>Cache Manager (Umbraco 17+)</Title>
+    <Description>Backoffice dashboard for Umbraco 17 and later to view and clear the site's in-process caches (Umbraco RuntimeCache and ASP.NET Core IMemoryCache).</Description>
     <Authors>Giriraj Digital</Authors>
+    <!-- Must stay in step with the holder named in LICENSE; a nuspec copyright that contradicts
+         the bundled licence is worse than none. -->
+    <Copyright>Copyright (c) 2026 Giriraj Digital</Copyright>
+    <PackageTags>umbraco;umbraco-marketplace;cache;backoffice;dashboard</PackageTags>
+
+    <!-- Rewrite for every <Version> bump — NuGet shows whatever is here against the version
+         being published, so stale notes describe the wrong release. -->
+    <PackageReleaseNotes>
+17.1.1
+- Supports Umbraco 17 and all later versions (verified on Umbraco 17 and 18).
+- Added package icon, licence, README and copyright metadata.
+    </PackageReleaseNotes>
+
+    <!-- nuget.org rejects/warns on packages without these. LICENSE (MIT) and README.md live in
+         the repo root; the readme must also be packed as a file (see the None item below). -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- nuget.org no longer honours icon URLs; the image must be embedded in the package.
+         128x128 PNG, well under the 1 MB limit. Umbraco Marketplace reuses this for its tile. -->
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/Nikhilgirirajdigital/umb.cachemanager</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Nikhilgirirajdigital/umb.cachemanager</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageOutputPath>$(MSBuildProjectDirectory)</PackageOutputPath>
@@ -24,11 +47,32 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Umbraco.Cms.Api.Management" Version="17.0.0" />
+
+    <!-- One build serves Umbraco 17 and every major after it. The range is a minimum, not a pin —
+         the host site's own Umbraco version always wins, so this only says "17.0.0 or newer".
+         Verified against 17.6.0 and 18.1.0: both target net10.0 and the API surface used here
+         (AppCaches/IAppCache, ManagementApiControllerBase, VersionedApiBackOfficeRoute,
+         AuthorizationPolicies, IComposer/IUmbracoBuilder) is identical across them.
+         Deliberately open-ended: a future major that breaks that surface will fail at runtime
+         rather than at restore, which is the trade-off for not gating each new major. -->
+    <PackageReference Include="Umbraco.Cms.Api.Management" Version="[17.0.0, )" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- PackageReadmeFile/PackageIcon above only name the files; they still have to be packed. -->
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <!-- The TypeScript/Vite frontend source under Client\ is build tooling only; never compile
-       it as part of the .NET project and never pack it. Only wwwroot\** ships. -->
+       it as part of the .NET project and never pack it. Only wwwroot\** ships. Without these
+       removes the Razor SDK's default globs sweep Client\package.json, package-lock.json and
+       tsconfig.json into content\ + contentFiles\, which then get copied into consuming projects. -->
+  <ItemGroup>
+    <Compile Remove="Client\**" />
+    <Content Remove="Client\**" />
+    <None Remove="Client\**" />
+  </ItemGroup>
 
   <!-- Tests\ has its own project (Tests\Umb.CacheManager.Tests.csproj); without this
        exclusion the default recursive **/*.cs glob here would also compile the test sources

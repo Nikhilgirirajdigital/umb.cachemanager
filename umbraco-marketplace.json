@@ -7,7 +7,7 @@
     "ImageUrl": "https://www.girirajdigital.com/media/gdlogo.png"
   },
   "Category": "Developer Tools",
-  "Description": "A backoffice dashboard for Umbraco 17 that allows you to view, inspect, and clear application caches without restarting the website.",
+  "Description": "A backoffice dashboard for Umbraco 17 and later that allows you to view, inspect, and clear application caches without restarting the website.",
   "LicenseTypes": [
     "Free"
   ],

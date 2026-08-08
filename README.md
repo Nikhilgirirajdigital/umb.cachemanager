@@ -1,6 +1,6 @@
 # Umb.CacheManager
 
-A backoffice dashboard for **Umbraco 17** that allows you to view,
+A backoffice dashboard for **Umbraco 17 and later** that allows you to view,
 inspect, and clear application caches without restarting the website.
 
 ## Features
@@ -55,7 +55,7 @@ From here you can view and manage the application's cached entries.
 > temporarily while they are rebuilt.
 
 
-![Cache Manager Dashboard](cache-manager-dashboard.png)
+![Cache Manager Dashboard](https://raw.githubusercontent.com/Nikhilgirirajdigital/umb.cachemanager/main/cache-manager-dashboard.png)
 
 ## Configuration
 
