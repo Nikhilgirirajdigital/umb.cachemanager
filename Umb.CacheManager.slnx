@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Umb.CacheManager.csproj" />
+  <Project Path="Tests/Umb.CacheManager.Tests.csproj" />
+</Solution>

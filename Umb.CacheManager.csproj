@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Serve wwwroot/App_Plugins/** at /App_Plugins/** in the consuming site so the
+         Umbraco 17 backoffice discovers umbraco-package.json. -->
+    <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
+
+    <!-- NuGet packaging so this can be reused in any Umbraco 17 site. -->
+    <IsPackable>true</IsPackable>
+    <PackageId>Umb.CacheManager</PackageId>
+    
+    <Version>17.0.0</Version>
+    <Title>Cache Manager (Umbraco 17)</Title>
+    <Description>Umbraco 17 backoffice dashboard to view and clear the site's in-process caches (Umbraco RuntimeCache and ASP.NET Core IMemoryCache).</Description>
+    <Authors>Giriraj Digital</Authors>
+
+    <!-- Build drops the .nupkg straight into the local NuGet feed so consuming sites restore
+         it without a manual pack step. Bump <Version> when publishing changes — NuGet caches
+         packages by version. -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageOutputPath>D:\CDG\Project\Package</PackageOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Umbraco.Cms.Api.Management" Version="17.0.0" />
+  </ItemGroup>
+
+  <!-- The TypeScript/Vite frontend source under Client\ is build tooling only; never compile
+       it as part of the .NET project and never pack it. Only wwwroot\** ships. -->
+
+  <!-- Tests\ has its own project (Tests\Umb.CacheManager.Tests.csproj); without this
+       exclusion the default recursive **/*.cs glob here would also compile the test sources
+       into this project, which does not reference xunit. -->
+  <ItemGroup>
+    <Compile Remove="Tests\**" />
+    <Content Remove="Tests\**" />
+    <None Remove="Tests\**" />
+  </ItemGroup>
+
+</Project>

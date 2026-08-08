@@ -1,0 +1,26 @@
+{
+    "$schema": "../../umbraco-package-schema.json",
+    "name": "Umb.CacheManager",
+    "version": "17.0.1",
+    "allowPublicAccess": false,
+    "extensions": [
+        {
+            "type": "dashboard",
+            "alias": "umbCacheManager.dashboard",
+            "name": "Cache Manager Dashboard",
+            "element": "/App_Plugins/CacheManager/cacheManager.element.js",
+            "elementName": "cache-manager-dashboard",
+            "weight": 10,
+            "meta": {
+                "label": "Cache Manager",
+                "pathname": "cache-manager"
+            },
+            "conditions": [
+                {
+                    "alias": "Umb.Condition.SectionAlias",
+                    "match": "Umb.Section.Settings"
+                }
+            ]
+        }
+    ]
+}
