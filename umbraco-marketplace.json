@@ -1,0 +1,20 @@
+{
+  "$schema": "https://marketplace.umbraco.com/umbraco-marketplace-schema.json",
+  "AuthorDetails": {
+    "Name": "Giriraj Digital",
+    "Description": "Your trusted Umbraco Gold Partner, elevating digital experiences with excellence in Microsoft .NET solutions.",
+    "Url": "https://www.girirajdigital.com/",
+    "ImageUrl": "https://www.girirajdigital.com/media/gdlogo.png"
+  },
+  "Category": "Developer Tools",
+  "Description": "A backoffice dashboard for Umbraco 17 that allows you to view, inspect, and clear application caches without restarting the website.",
+  "LicenseTypes": [
+    "Free"
+  ],
+  "Screenshots": [
+    {
+      "ImageUrl": "https://raw.githubusercontent.com/Nikhilgirirajdigital/umb.cachemanager/main/cache-manager-dashboard.png",
+      "Caption": "Umb.CacheManager Dashboard"
+    }
+  ]
+}
