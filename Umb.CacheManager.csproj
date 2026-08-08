@@ -18,11 +18,8 @@
     <Description>Umbraco 17 backoffice dashboard to view and clear the site's in-process caches (Umbraco RuntimeCache and ASP.NET Core IMemoryCache).</Description>
     <Authors>Giriraj Digital</Authors>
 
-    <!-- Build drops the .nupkg straight into the local NuGet feed so consuming sites restore
-         it without a manual pack step. Bump <Version> when publishing changes — NuGet caches
-         packages by version. -->
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageOutputPath>D:\CDG\Project\Package</PackageOutputPath>
+    <PackageOutputPath>$(MSBuildProjectDirectory)</PackageOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
