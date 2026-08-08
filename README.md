@@ -54,6 +54,7 @@ From here you can view and manage the application's cached entries.
 > The caches will automatically rebuild, but the website may be slower
 > temporarily while they are rebuilt.
 
+
 ![Cache Manager Dashboard](cache-manager-dashboard.png)
 
 ## Configuration
