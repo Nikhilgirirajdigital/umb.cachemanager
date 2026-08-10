@@ -57,44 +57,6 @@ From here you can view and manage the application's cached entries.
 
 ![Cache Manager Dashboard](https://raw.githubusercontent.com/Nikhilgirirajdigital/umb.cachemanager/main/cache-manager-dashboard.png)
 
-## Configuration
-
-You can define your own cache key prefixes so the dashboard can
-distinguish project-specific cache entries from system caches.
-
-``` json
-{
-  "CacheManager": {
-    "MyKeyPrefixes": [
-      "MySite.",
-      "MyCompany."
-    ]
-  }
-}
-```
-
-You can also configure additional system cache patterns:
-
-``` json
-{
-  "CacheManager": {
-    "SystemKeyPrefixes": [
-      "ic:",
-      "internal_"
-    ],
-    "SystemTypeNamespaces": [
-      "MyCompany.Internal"
-    ],
-    "SystemValueTypes": [
-      "ImmutableArray<Int32>"
-    ]
-  }
-}
-```
-
-If no project prefixes are configured, the package uses automatic
-detection to identify common Umbraco and system cache entries.
-
 ## Cache Expiry
 
 Where available, the dashboard displays cache expiry information:
