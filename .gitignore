@@ -58,3 +58,4 @@ nunit-*.xml
 /.vs
 /docs/superpowers
 /CLAUDE.md
+/Client/node_modules

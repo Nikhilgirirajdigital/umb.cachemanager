@@ -13,10 +13,17 @@ import {
   type UmbNotificationContext,
 } from "@umbraco-cms/backoffice/notification";
 import { umbConfirmModal } from "@umbraco-cms/backoffice/modal";
+// Type only — <uui-pagination> is already registered by the backoffice (its `external/uui` barrel
+// re-exports @umbraco-ui/uui, which pulls in uui-pagination), exactly as with uui-table below. A
+// value import would bundle the backoffice, which vite.config.ts externalizes on purpose.
+import type { UUIPaginationElement } from "@umbraco-cms/backoffice/external/uui";
 import { CacheManagerRepository } from "../api/cacheManagerRepository";
 import type { CacheEntryInfo, CacheKeyRef, CacheStoreInfo } from "../api/types";
-import { formatRemaining, isExpiringSoon, remainingMs } from "../util/expiry";
+import { pageOf, type Page } from "../util/paging";
 import { applyClearResult, pruneToExisting, selectionKey } from "../util/selection";
+// Registers <cache-manager-expiry>, which owns the countdown clock. Importing it for the
+// side effect is the whole point — see the note on _pages about why the clock left this file.
+import "./cacheExpiry.element";
 
 @customElement("cache-manager-dashboard")
 export class CacheManagerDashboardElement extends UmbLitElement {
@@ -29,13 +36,22 @@ export class CacheManagerDashboardElement extends UmbLitElement {
    * every change below reassigns a fresh Set rather than calling add/delete on this one.
    */
   @state() private _selected = new Set<string>();
-  /** Bumped once a second; every countdown derives from it, so one timer serves the page. */
-  @state() private _now = Date.now();
+
+  /**
+   * Current page per section, keyed by store + section. Paging exists because `uui-table-cell`
+   * forces a synchronous layout from its `slotchange` handler, making a full table cost
+   * O(cells^2) — see the note in util/paging.ts. It bounds only what is RENDERED: filtering,
+   * selection and clearing all still act on the whole filtered section.
+   *
+   * There is deliberately no clock in this element any more. `_now` used to live here, and Lit
+   * has no partial re-render, so each tick re-ran the entire template and re-fired every cell's
+   * layout-forcing `slotchange`. <cache-manager-expiry> owns its own subscription instead.
+   */
+  @state() private _pages: Record<string, number> = {};
 
   #repo = new CacheManagerRepository(() => this.#getToken());
   #authContext?: typeof UMB_AUTH_CONTEXT.TYPE;
   #notification?: UmbNotificationContext;
-  #timer?: number;
 
   constructor() {
     super();
@@ -50,22 +66,6 @@ export class CacheManagerDashboardElement extends UmbLitElement {
   override connectedCallback(): void {
     super.connectedCallback();
     this.#refresh();
-    this.#stopTimer();
-    this.#timer = window.setInterval(() => {
-      this._now = Date.now();
-    }, 1000);
-  }
-
-  override disconnectedCallback(): void {
-    this.#stopTimer();
-    super.disconnectedCallback();
-  }
-
-  #stopTimer(): void {
-    if (this.#timer !== undefined) {
-      window.clearInterval(this.#timer);
-      this.#timer = undefined;
-    }
   }
 
   async #getToken(): Promise<string | undefined> {
@@ -85,17 +85,42 @@ export class CacheManagerDashboardElement extends UmbLitElement {
     }
   }
 
-  #matchesFilter(entry: CacheEntryInfo): boolean {
+  /**
+   * The filtered rows of one section. The needle is normalised ONCE per call rather than per
+   * entry: these run several times per render, per store, and a render can cover thousands of
+   * entries.
+   */
+  #entriesIn(store: CacheStoreInfo, system: boolean): CacheEntryInfo[] {
     const needle = this._filter.trim().toLowerCase();
-    return !needle || entry.key.toLowerCase().includes(needle);
+    return store.entries.filter(
+      (e) => e.isSystem === system && (!needle || e.key.toLowerCase().includes(needle))
+    );
   }
 
   #customEntries(store: CacheStoreInfo): CacheEntryInfo[] {
-    return store.entries.filter((e) => !e.isSystem && this.#matchesFilter(e));
+    return this.#entriesIn(store, false);
   }
 
   #systemEntries(store: CacheStoreInfo): CacheEntryInfo[] {
-    return store.entries.filter((e) => e.isSystem && this.#matchesFilter(e));
+    return this.#entriesIn(store, true);
+  }
+
+  #pageKey(store: CacheStoreInfo, system: boolean): string {
+    return selectionKey(store.store, system ? "system" : "custom");
+  }
+
+  #setPage(store: CacheStoreInfo, system: boolean, page: number): void {
+    this._pages = { ...this._pages, [this.#pageKey(store, system)]: page };
+  }
+
+  /**
+   * Filtering renarrows every section at once, so a page index held for the old list is
+   * meaningless. `pageOf` would clamp it, but clamping lands the user on the LAST page of the new
+   * results — starting from the first is what they expect after typing.
+   */
+  #setFilter(value: string): void {
+    this._filter = value;
+    this._pages = {};
   }
 
   /**
@@ -294,7 +319,7 @@ export class CacheManagerDashboardElement extends UmbLitElement {
             placeholder="Filter key…"
             .value=${this._filter}
             @input=${(e: InputEvent) =>
-              (this._filter = (e.target as HTMLInputElement).value)}
+              this.#setFilter((e.target as HTMLInputElement).value)}
           ></uui-input>
 
           <uui-button
@@ -363,7 +388,7 @@ export class CacheManagerDashboardElement extends UmbLitElement {
 
         ${custom.length === 0
           ? html`<p class="note">No keys from your project to show.</p>`
-          : this.#renderTable(store, custom)}
+          : this.#renderTable(store, custom, false)}
 
         <details class="system">
           <!-- The <summary> IS this section's head — same flex row, same <h4> as "Your cache"
@@ -394,7 +419,7 @@ export class CacheManagerDashboardElement extends UmbLitElement {
           </summary>
           ${system.length === 0
             ? html`<p class="note">No Umbraco or system keys to show.</p>`
-            : this.#renderTable(store, system)}
+            : this.#renderTable(store, system, true)}
         </details>
       </uui-box>
     `;
@@ -436,9 +461,20 @@ export class CacheManagerDashboardElement extends UmbLitElement {
   // the rows. With no label its internal span is empty, and uui-boolean-input's own
   // "span.label:empty { display: none }" rule then removes the slot completely — while the input
   // still takes its accessible name from the host's aria-label, which it prefers over `label`.
-  #renderTable(store: CacheStoreInfo, entries: CacheEntryInfo[]) {
-    const selectedHere = entries.filter((e) => this.#isSelected(store.store, e.key)).length;
-    const all = entries.length > 0 && selectedHere === entries.length;
+  // Only ONE PAGE of rows reaches the DOM. That is not cosmetic: uui-table-cell wires its
+  // _detectOverflow to the cell's slotchange unconditionally, and that handler reads scrollWidth
+  // and clientWidth — layout-forcing reads. Inserting every cell at once therefore flushes layout
+  // once per cell over a document that is still growing, which is O(cells^2) and froze the tab for
+  // minutes on a site with ~700 entries (~3,500 cells). A page of 50 keeps it at ~250.
+  #renderTable(store: CacheStoreInfo, entries: CacheEntryInfo[], system: boolean) {
+    const page = pageOf(entries, this._pages[this.#pageKey(store, system)] ?? 0);
+
+    // "Select all shown" means the rows on THIS PAGE — the ones the user can actually see next to
+    // the checkbox. It is deliberately narrower than "Clear selected", which still counts every
+    // tick in the filtered section (including other pages), so paging can never silently drop a
+    // tick the user made earlier.
+    const selectedHere = page.items.filter((e) => this.#isSelected(store.store, e.key)).length;
+    const all = page.items.length > 0 && selectedHere === page.items.length;
 
     return html`
       <uui-table>
@@ -449,7 +485,7 @@ export class CacheManagerDashboardElement extends UmbLitElement {
               .checked=${all}
               .indeterminate=${selectedHere > 0 && !all}
               @change=${(e: Event) =>
-                this.#toggleAll(store, entries, (e.target as HTMLInputElement).checked)}
+                this.#toggleAll(store, page.items, (e.target as HTMLInputElement).checked)}
             ></uui-checkbox>
           </uui-table-head-cell>
           <uui-table-head-cell>Key</uui-table-head-cell>
@@ -458,7 +494,7 @@ export class CacheManagerDashboardElement extends UmbLitElement {
           <uui-table-head-cell></uui-table-head-cell>
         </uui-table-head>
         ${repeat(
-          entries,
+          page.items,
           (e) => e.key,
           (e) => html`
             <uui-table-row>
@@ -472,7 +508,12 @@ export class CacheManagerDashboardElement extends UmbLitElement {
               </uui-table-cell>
               <uui-table-cell><span class="key">${e.key}</span></uui-table-cell>
               <uui-table-cell>${e.valueType ?? "—"}</uui-table-cell>
-              <uui-table-cell class="expires">${this.#renderExpiry(e)}</uui-table-cell>
+              <uui-table-cell class="expires">
+                <cache-manager-expiry
+                  .expiresAt=${e.expiresAt}
+                  .kind=${e.expiryKind}
+                ></cache-manager-expiry>
+              </uui-table-cell>
               <uui-table-cell class="actions">
                 <uui-button
                   look="secondary"
@@ -488,22 +529,39 @@ export class CacheManagerDashboardElement extends UmbLitElement {
           `
         )}
       </uui-table>
+      ${this.#renderPager(store, system, page)}
     `;
   }
 
-  #renderExpiry(entry: CacheEntryInfo) {
-    const ms = remainingMs(entry.expiresAt, this._now);
-    const text = formatRemaining(ms, entry.expiryKind);
-    const soon = isExpiringSoon(ms, entry.expiryKind);
+  /**
+   * Hidden when everything fits on one page — the section head already carries the count, so a
+   * lone "1" button would be noise.
+   *
+   * `.total` is bound before `.current` on purpose: uui-pagination's `current` setter clamps into
+   * [1, this.total] and its `total` setter does NOT re-clamp afterwards, so with the element's
+   * default total of 100 still in place, binding current first would pin any section past page 100
+   * (a store over 5,000 entries) to page 100 for good.
+   *
+   * `label` is not visible text — uui-pagination folds it into the aria-label as
+   * "<label>. Current page: <current>". All four sections render a pager, so it has to name both
+   * the store and the section or a screen reader hears four identical ones.
+   */
+  #renderPager(store: CacheStoreInfo, system: boolean, page: Page<CacheEntryInfo>) {
+    if (page.pageCount <= 1) {
+      return nothing;
+    }
 
     return html`
-      <span class=${soon ? "expiry soon" : "expiry"}>${text}</span>
-      ${entry.expiryKind === "sliding"
-        ? html`<span
-            class="sliding"
-            title="The clock resets each time the entry is read"
-          >(sliding)</span>`
-        : nothing}
+      <div class="pager">
+        <uui-pagination
+          label=${`${store.displayName}, ${system ? "Umbraco & system cache" : "your cache"}`}
+          .total=${page.pageCount}
+          .current=${page.page + 1}
+          @change=${(e: Event) =>
+            // uui-pagination counts from 1, _pages from 0. This is the only place the two meet.
+            this.#setPage(store, system, (e.target as UUIPaginationElement).current - 1)}
+        ></uui-pagination>
+      </div>
     `;
   }
 
@@ -617,20 +675,30 @@ export class CacheManagerDashboardElement extends UmbLitElement {
     }
     .expires {
       /* Countdown and its "(sliding)" note are one reading — keep them on a single line rather
-         than letting the note drop under the time and make the row twice as tall. */
+         than letting the note drop under the time and make the row twice as tall. The countdown's
+         own text styling lives in cacheExpiry.element.ts: shadow DOM encapsulates it, so this
+         stylesheet cannot reach inside <cache-manager-expiry>. */
       white-space: nowrap;
     }
-    .expiry {
-      font-variant-numeric: tabular-nums;
+    .pager {
+      /* The grey band the backoffice's own pagers sit on. They get it for free by sitting on the
+         page background; ours is inside a uui-box, whose surface is white, so the band has to be
+         drawn here. Both are TOKENS, not literals: surface-alt is #f3f3f5 in the light theme and
+         #373e47 in the dark one, so hardcoding the grey would break dark mode.
+
+         The padding lives on this wrapper rather than on uui-pagination itself: the element sizes
+         its visible page buttons from its own offsetWidth, which INCLUDES its padding, so padding
+         it directly would have it claim ~24px it cannot draw in and fit one button too many. */
+      background-color: var(--uui-color-surface-alt);
+      border-top: 1px solid var(--uui-color-divider-standalone);
+      padding: var(--uui-size-space-4);
+      margin-top: var(--uui-size-layout-1);
     }
-    .expiry.soon {
-      color: var(--uui-color-danger);
-      font-weight: bold;
-    }
-    .sliding {
-      color: var(--uui-color-text-alt);
-      font-size: var(--uui-type-small-size);
-      margin-left: var(--uui-size-space-2);
+    uui-pagination {
+      /* Block, matching the backoffice's own umb-collection-pagination. Load-bearing as well as
+         conventional: the element declares no :host display of its own, and shrink-wrapped it would
+         measure the buttons it already has instead of the space available to it. */
+      display: block;
     }
     .pick {
       /* Shrink-to-fit: the column holds a bare checkbox, so it must not claim a share of the

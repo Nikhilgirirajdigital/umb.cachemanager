@@ -1,10 +1,10 @@
-import { UmbLitElement as ee } from "@umbraco-cms/backoffice/lit-element";
-import { css as te, state as y, customElement as ae, html as l, repeat as K, nothing as j } from "@umbraco-cms/backoffice/external/lit";
-import { UMB_AUTH_CONTEXT as se } from "@umbraco-cms/backoffice/auth";
-import { UMB_NOTIFICATION_CONTEXT as ie } from "@umbraco-cms/backoffice/notification";
-import { umbConfirmModal as ne } from "@umbraco-cms/backoffice/modal";
-const f = "/umbraco/management/api/v1/cache-manager";
-class oe {
+import { UmbLitElement as de } from "@umbraco-cms/backoffice/lit-element";
+import { css as Y, property as q, state as f, customElement as G, LitElement as pe, nothing as z, html as c, repeat as X } from "@umbraco-cms/backoffice/external/lit";
+import { UMB_AUTH_CONTEXT as fe } from "@umbraco-cms/backoffice/auth";
+import { UMB_NOTIFICATION_CONTEXT as me } from "@umbraco-cms/backoffice/notification";
+import { umbConfirmModal as ye } from "@umbraco-cms/backoffice/modal";
+const g = "/umbraco/management/api/v1/cache-manager";
+class ge {
   #t;
   constructor(t) {
     this.#t = t;
@@ -14,19 +14,19 @@ class oe {
     return a && (t.Authorization = `Bearer ${a}`), t;
   }
   async getCaches() {
-    const t = await fetch(`${f}/caches`, { headers: await this.#e() });
+    const t = await fetch(`${g}/caches`, { headers: await this.#e() });
     if (!t.ok)
       throw new Error(`Failed to load caches (HTTP ${t.status}).`);
     return await t.json();
   }
   async clearKey(t, a) {
-    const n = `store=${encodeURIComponent(t)}&key=${encodeURIComponent(a)}`, o = await fetch(`${f}/key?${n}`, {
+    const s = `store=${encodeURIComponent(t)}&key=${encodeURIComponent(a)}`, r = await fetch(`${g}/key?${s}`, {
       method: "DELETE",
       headers: await this.#e()
     });
-    if (!o.ok)
-      throw new Error(`Failed to clear '${a}' (HTTP ${o.status}).`);
-    return await o.json();
+    if (!r.ok)
+      throw new Error(`Failed to clear '${a}' (HTTP ${r.status}).`);
+    return await r.json();
   }
   /**
    * Clears an explicit batch in ONE request. Deliberately not a client-side loop over clearKey:
@@ -34,7 +34,7 @@ class oe {
    * cost 2N, and a mid-loop failure would leave the view inconsistent until the next refresh.
    */
   async clearKeys(t) {
-    const a = await fetch(`${f}/keys`, {
+    const a = await fetch(`${g}/keys`, {
       method: "DELETE",
       headers: { ...await this.#e(), "Content-Type": "application/json" },
       body: JSON.stringify({ items: t })
@@ -44,7 +44,7 @@ class oe {
     return await a.json();
   }
   async clearAll() {
-    const t = await fetch(`${f}/all`, {
+    const t = await fetch(`${g}/all`, {
       method: "DELETE",
       headers: await this.#e()
     });
@@ -53,93 +53,176 @@ class oe {
     return await t.json();
   }
   async clearCustom(t) {
-    const a = t ? `?store=${encodeURIComponent(t)}` : "", n = await fetch(`${f}/custom${a}`, {
+    const a = t ? `?store=${encodeURIComponent(t)}` : "", s = await fetch(`${g}/custom${a}`, {
       method: "DELETE",
       headers: await this.#e()
     });
-    if (!n.ok)
-      throw new Error(`Failed to clear your cache (HTTP ${n.status}).`);
-    return await n.json();
+    if (!s.ok)
+      throw new Error(`Failed to clear your cache (HTTP ${s.status}).`);
+    return await s.json();
   }
   /**
    * The complement of clearCustom. Weaker than clearAll by construction — the server can only
    * remove entries it can enumerate, where clearAll uses each store's native Clear().
    */
   async clearSystem(t) {
-    const a = t ? `?store=${encodeURIComponent(t)}` : "", n = await fetch(`${f}/system${a}`, {
+    const a = t ? `?store=${encodeURIComponent(t)}` : "", s = await fetch(`${g}/system${a}`, {
       method: "DELETE",
       headers: await this.#e()
     });
-    if (!n.ok)
-      throw new Error(`Failed to clear the Umbraco & system cache (HTTP ${n.status}).`);
-    return await n.json();
+    if (!s.ok)
+      throw new Error(`Failed to clear the Umbraco & system cache (HTTP ${s.status}).`);
+    return await s.json();
   }
 }
-function re(e, t) {
+const we = 50;
+function be(e, t, a = we) {
+  const s = e.length, r = Math.max(1, Math.ceil(s / a)), l = Math.min(Math.max(t, 0), r - 1), o = l * a, y = e.slice(o, o + a);
+  return {
+    items: y,
+    page: l,
+    pageCount: r,
+    from: s === 0 ? 0 : o + 1,
+    to: s === 0 ? 0 : o + y.length,
+    total: s
+  };
+}
+const ke = "\0", d = (e, t) => `${e}${ke}${t}`;
+function _e(e, t) {
+  const a = /* @__PURE__ */ new Set();
+  for (const s of t)
+    for (const r of s.entries)
+      a.add(d(s.store, r.key));
+  return new Set([...e].filter((s) => a.has(s)));
+}
+function ve(e) {
+  return new Set(e.map((t) => d(t.store, t.key)));
+}
+function $e(e, t, a) {
+  const s = new Set(e);
+  for (const r of t)
+    s.delete(d(r.store, r.key));
+  for (const r of ve(a))
+    s.add(r);
+  return s;
+}
+function Ce(e, t) {
   if (!e) return null;
   const a = Date.parse(e);
   return Number.isNaN(a) ? null : a - t;
 }
-function le(e, t) {
+function xe(e, t) {
   if (t === "none") return "never";
   if (t === "unknown" || e === null) return "—";
   if (e <= 0) return "expired";
   const a = Math.floor(e / 1e3);
   if (a < 60) return `${a}s`;
-  const n = Math.floor(a / 60), o = a % 60;
-  if (n < 60) return `${n}m ${String(o).padStart(2, "0")}s`;
-  const r = Math.floor(n / 60), b = n % 60;
-  if (r < 24) return `${r}h ${b}m`;
-  const Q = Math.floor(r / 24), Z = r % 24;
-  return `${Q}d ${Z}h`;
+  const s = Math.floor(a / 60), r = a % 60;
+  if (s < 60) return `${s}m ${String(r).padStart(2, "0")}s`;
+  const l = Math.floor(s / 60), o = s % 60;
+  if (l < 24) return `${l}h ${o}m`;
+  const y = Math.floor(l / 24), ue = l % 24;
+  return `${y}d ${ue}h`;
 }
-function ce(e, t) {
+function Te(e, t) {
   return t === "none" || t === "unknown" || e === null ? !1 : e > 0 && e < 6e4;
 }
-const he = "\0", d = (e, t) => `${e}${he}${t}`;
-function ue(e, t) {
-  const a = /* @__PURE__ */ new Set();
-  for (const n of t)
-    for (const o of n.entries)
-      a.add(d(n.store, o.key));
-  return new Set([...e].filter((n) => a.has(n)));
+const x = /* @__PURE__ */ new Set();
+let T;
+function Ee(e) {
+  x.add(e), T ??= setInterval(() => {
+    for (const a of [...x])
+      a();
+  }, 1e3);
+  let t = !1;
+  return () => {
+    t || (t = !0, x.delete(e), x.size === 0 && T !== void 0 && (clearInterval(T), T = void 0));
+  };
 }
-function de(e) {
-  return new Set(e.map((t) => d(t.store, t.key)));
-}
-function pe(e, t, a) {
-  const n = new Set(e);
-  for (const o of t)
-    n.delete(d(o.store, o.key));
-  for (const o of de(a))
-    n.add(o);
-  return n;
-}
-var fe = Object.defineProperty, me = Object.getOwnPropertyDescriptor, O = (e) => {
+var Se = Object.defineProperty, Me = Object.getOwnPropertyDescriptor, J = (e) => {
   throw TypeError(e);
-}, p = (e, t, a, n) => {
-  for (var o = n > 1 ? void 0 : n ? me(t, a) : t, r = e.length - 1, b; r >= 0; r--)
-    (b = e[r]) && (o = (n ? b(t, a, o) : b(o)) || o);
-  return n && o && fe(t, a, o), o;
-}, z = (e, t, a) => t.has(e) || O("Cannot " + a), c = (e, t, a) => (z(e, t, "read from private field"), a ? a.call(e) : t.get(e)), g = (e, t, a) => t.has(e) ? O("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), C = (e, t, a, n) => (z(e, t, "write to private field"), t.set(e, a), a), i = (e, t, a) => (z(e, t, "access private method"), a), u, k, _, m, s, E, L, $, N, I, A, P, R, x, H, W, D, F, T, w, v, Y, B, q, X, G, J, S, M, U, V;
-let h = class extends ee {
+}, M = (e, t, a, s) => {
+  for (var r = s > 1 ? void 0 : s ? Me(t, a) : t, l = e.length - 1, o; l >= 0; l--)
+    (o = e[l]) && (r = (s ? o(t, a, r) : o(r)) || r);
+  return s && r && Se(t, a, r), r;
+}, V = (e, t, a) => t.has(e) || J("Cannot " + a), Pe = (e, t, a) => (V(e, t, "read from private field"), a ? a.call(e) : t.get(e)), Ue = (e, t, a) => t.has(e) ? J("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), j = (e, t, a, s) => (V(e, t, "write to private field"), t.set(e, a), a), k;
+let w = class extends pe {
   constructor() {
-    super(), g(this, s), this._loading = !0, this._working = !1, this._stores = [], this._filter = "", this._selected = /* @__PURE__ */ new Set(), this._now = Date.now(), g(this, u, new oe(() => i(this, s, L).call(this))), g(this, k), g(this, _), g(this, m), this.consumeContext(se, (e) => {
-      C(this, k, e);
-    }), this.consumeContext(ie, (e) => {
-      C(this, _, e);
+    super(...arguments), this.kind = "unknown", this._now = Date.now(), Ue(this, k);
+  }
+  connectedCallback() {
+    super.connectedCallback(), this._now = Date.now(), j(this, k, Ee(() => {
+      this._now = Date.now();
+    }));
+  }
+  disconnectedCallback() {
+    var e;
+    (e = Pe(this, k)) == null || e.call(this), j(this, k, void 0), super.disconnectedCallback();
+  }
+  render() {
+    const e = Ce(this.expiresAt, this._now);
+    return c`
+      <span class=${Te(e, this.kind) ? "expiry soon" : "expiry"}
+        >${xe(e, this.kind)}</span
+      >
+      ${this.kind === "sliding" ? c`<span class="sliding" title="The clock resets each time the entry is read"
+            >(sliding)</span
+          >` : z}
+    `;
+  }
+};
+k = /* @__PURE__ */ new WeakMap();
+w.styles = Y`
+    :host {
+      /* Countdown and its "(sliding)" note are one reading — keep them on a single line rather
+         than letting the note drop under the time and make the row twice as tall. */
+      white-space: nowrap;
+    }
+    .expiry {
+      font-variant-numeric: tabular-nums;
+    }
+    .expiry.soon {
+      color: var(--uui-color-danger);
+      font-weight: bold;
+    }
+    .sliding {
+      color: var(--uui-color-text-alt);
+      font-size: var(--uui-type-small-size);
+      margin-left: var(--uui-size-space-2);
+    }
+  `;
+M([
+  q({ attribute: !1 })
+], w.prototype, "expiresAt", 2);
+M([
+  q({ attribute: !1 })
+], w.prototype, "kind", 2);
+M([
+  f()
+], w.prototype, "_now", 2);
+w = M([
+  G("cache-manager-expiry")
+], w);
+var Ae = Object.defineProperty, Ne = Object.getOwnPropertyDescriptor, Z = (e) => {
+  throw TypeError(e);
+}, m = (e, t, a, s) => {
+  for (var r = s > 1 ? void 0 : s ? Ne(t, a) : t, l = e.length - 1, o; l >= 0; l--)
+    (o = e[l]) && (r = (s ? o(t, a, r) : o(r)) || r);
+  return s && r && Ae(t, a, r), r;
+}, I = (e, t, a) => t.has(e) || Z("Cannot " + a), h = (e, t, a) => (I(e, t, "read from private field"), a ? a.call(e) : t.get(e)), E = (e, t, a) => t.has(e) ? Z("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), B = (e, t, a, s) => (I(e, t, "write to private field"), t.set(e, a), a), n = (e, t, a) => (I(e, t, "access private method"), a), p, _, v, i, Q, $, D, O, R, L, ee, te, F, K, S, ae, se, H, W, P, b, C, ie, ne, re, oe, le, ce, U, A, N, he;
+let u = class extends de {
+  constructor() {
+    super(), E(this, i), this._loading = !0, this._working = !1, this._stores = [], this._filter = "", this._selected = /* @__PURE__ */ new Set(), this._pages = {}, E(this, p, new ge(() => n(this, i, Q).call(this))), E(this, _), E(this, v), this.consumeContext(fe, (e) => {
+      B(this, _, e);
+    }), this.consumeContext(me, (e) => {
+      B(this, v, e);
     });
   }
   connectedCallback() {
-    super.connectedCallback(), i(this, s, $).call(this), i(this, s, E).call(this), C(this, m, window.setInterval(() => {
-      this._now = Date.now();
-    }, 1e3));
-  }
-  disconnectedCallback() {
-    i(this, s, E).call(this), super.disconnectedCallback();
+    super.connectedCallback(), n(this, i, $).call(this);
   }
   render() {
-    return l`
+    return c`
       <umb-body-layout headline="Cache Manager">
         <div slot="header" class="toolbar">
           <uui-input
@@ -148,14 +231,14 @@ let h = class extends ee {
             label="Filter key"
             placeholder="Filter key…"
             .value=${this._filter}
-            @input=${(e) => this._filter = e.target.value}
+            @input=${(e) => n(this, i, te).call(this, e.target.value)}
           ></uui-input>
 
           <uui-button
             look="secondary"
             label="Refresh"
             .disabled=${this._working}
-            @click=${() => i(this, s, $).call(this)}
+            @click=${() => n(this, i, $).call(this)}
           >
             <uui-icon name="icon-sync"></uui-icon> Refresh
           </uui-button>
@@ -165,161 +248,168 @@ let h = class extends ee {
             color="danger"
             label="Clear everything"
             .disabled=${this._working}
-            @click=${() => i(this, s, G).call(this)}
+            @click=${() => n(this, i, le).call(this)}
           >
             Clear everything
           </uui-button>
         </div>
 
-        ${this._loading ? l`<uui-loader></uui-loader>` : K(
+        ${this._loading ? c`<uui-loader></uui-loader>` : X(
       this._stores,
       (e) => e.store,
-      (e) => i(this, s, J).call(this, e)
+      (e) => n(this, i, ce).call(this, e)
     )}
       </umb-body-layout>
     `;
   }
 };
-u = /* @__PURE__ */ new WeakMap();
-k = /* @__PURE__ */ new WeakMap();
+p = /* @__PURE__ */ new WeakMap();
 _ = /* @__PURE__ */ new WeakMap();
-m = /* @__PURE__ */ new WeakMap();
-s = /* @__PURE__ */ new WeakSet();
-E = function() {
-  c(this, m) !== void 0 && (window.clearInterval(c(this, m)), C(this, m, void 0));
-};
-L = async function() {
-  return c(this, k) ? await c(this, k).getLatestToken() : void 0;
+v = /* @__PURE__ */ new WeakMap();
+i = /* @__PURE__ */ new WeakSet();
+Q = async function() {
+  return h(this, _) ? await h(this, _).getLatestToken() : void 0;
 };
 $ = async function() {
   this._loading = !0;
   try {
-    this._stores = await c(this, u).getCaches(), this._selected = ue(this._selected, this._stores);
+    this._stores = await h(this, p).getCaches(), this._selected = _e(this._selected, this._stores);
   } catch (e) {
-    i(this, s, T).call(this, e);
+    n(this, i, P).call(this, e);
   } finally {
     this._loading = !1;
   }
 };
-N = function(e) {
-  const t = this._filter.trim().toLowerCase();
-  return !t || e.key.toLowerCase().includes(t);
+D = function(e, t) {
+  const a = this._filter.trim().toLowerCase();
+  return e.entries.filter(
+    (s) => s.isSystem === t && (!a || s.key.toLowerCase().includes(a))
+  );
 };
-I = function(e) {
-  return e.entries.filter((t) => !t.isSystem && i(this, s, N).call(this, t));
-};
-A = function(e) {
-  return e.entries.filter((t) => t.isSystem && i(this, s, N).call(this, t));
-};
-P = function(e) {
-  return e.entries.filter((t) => !t.isSystem).length;
+O = function(e) {
+  return n(this, i, D).call(this, e, !1);
 };
 R = function(e) {
-  return e.entries.filter((t) => t.isSystem).length;
+  return n(this, i, D).call(this, e, !0);
 };
-x = function(e, t) {
-  return this._selected.has(d(e, t));
+L = function(e, t) {
+  return d(e.store, t ? "system" : "custom");
 };
-H = function(e, t, a) {
-  const n = new Set(this._selected);
-  a ? n.add(d(e, t)) : n.delete(d(e, t)), this._selected = n;
+ee = function(e, t, a) {
+  this._pages = { ...this._pages, [n(this, i, L).call(this, e, t)]: a };
 };
-W = function(e, t, a) {
-  const n = new Set(this._selected);
-  for (const o of t) {
-    const r = d(e.store, o.key);
-    a ? n.add(r) : n.delete(r);
-  }
-  this._selected = n;
-};
-D = function(e, t) {
-  return (t ? i(this, s, A).call(this, e) : i(this, s, I).call(this, e)).filter((n) => i(this, s, x).call(this, e.store, n.key)).map((n) => ({ store: e.store, key: n.key }));
+te = function(e) {
+  this._filter = e, this._pages = {};
 };
 F = function(e) {
-  c(this, _)?.peek("positive", { data: { message: e } });
+  return e.entries.filter((t) => !t.isSystem).length;
 };
-T = function(e) {
+K = function(e) {
+  return e.entries.filter((t) => t.isSystem).length;
+};
+S = function(e, t) {
+  return this._selected.has(d(e, t));
+};
+ae = function(e, t, a) {
+  const s = new Set(this._selected);
+  a ? s.add(d(e, t)) : s.delete(d(e, t)), this._selected = s;
+};
+se = function(e, t, a) {
+  const s = new Set(this._selected);
+  for (const r of t) {
+    const l = d(e.store, r.key);
+    a ? s.add(l) : s.delete(l);
+  }
+  this._selected = s;
+};
+H = function(e, t) {
+  return (t ? n(this, i, R).call(this, e) : n(this, i, O).call(this, e)).filter((s) => n(this, i, S).call(this, e.store, s.key)).map((s) => ({ store: e.store, key: s.key }));
+};
+W = function(e) {
+  h(this, v)?.peek("positive", { data: { message: e } });
+};
+P = function(e) {
   const t = e instanceof Error ? e.message : "Something went wrong.";
-  c(this, _)?.peek("danger", { data: { message: t } });
+  h(this, v)?.peek("danger", { data: { message: t } });
 };
-w = async function(e, t, a) {
+b = async function(e, t, a) {
   try {
-    return await ne(this, { headline: e, content: t, confirmLabel: a, color: "danger" }), !0;
+    return await ye(this, { headline: e, content: t, confirmLabel: a, color: "danger" }), !0;
   } catch {
     return !1;
   }
 };
-v = async function(e, t) {
+C = async function(e, t) {
   this._working = !0;
   try {
     const a = await e();
-    i(this, s, F).call(this, a.message ?? t), await i(this, s, $).call(this);
+    n(this, i, W).call(this, a.message ?? t), await n(this, i, $).call(this);
   } catch (a) {
-    i(this, s, T).call(this, a);
+    n(this, i, P).call(this, a);
   } finally {
     this._working = !1;
   }
 };
-Y = async function(e, t) {
-  await i(this, s, w).call(this, "Clear cache entry", `Remove '${t.key}' from ${e.displayName}? This cannot be undone.`, "Clear") && await i(this, s, v).call(this, () => c(this, u).clearKey(e.store, t.key), "Entry cleared.");
+ie = async function(e, t) {
+  await n(this, i, b).call(this, "Clear cache entry", `Remove '${t.key}' from ${e.displayName}? This cannot be undone.`, "Clear") && await n(this, i, C).call(this, () => h(this, p).clearKey(e.store, t.key), "Entry cleared.");
 };
-B = async function(e) {
-  const t = i(this, s, P).call(this, e);
-  await i(this, s, w).call(this, "Clear your cache", `Remove your project's ${t} cached entr${t === 1 ? "y" : "ies"} from ${e.displayName}? Umbraco's own caches are left alone. This cannot be undone.`, "Clear your cache") && await i(this, s, v).call(this, () => c(this, u).clearCustom(e.store), "Your cache was cleared.");
+ne = async function(e) {
+  const t = n(this, i, F).call(this, e);
+  await n(this, i, b).call(this, "Clear your cache", `Remove your project's ${t} cached entr${t === 1 ? "y" : "ies"} from ${e.displayName}? Umbraco's own caches are left alone. This cannot be undone.`, "Clear your cache") && await n(this, i, C).call(this, () => h(this, p).clearCustom(e.store), "Your cache was cleared.");
 };
-q = async function(e) {
-  const t = i(this, s, R).call(this, e);
-  await i(this, s, w).call(this, "Clear Umbraco & system cache", `Remove ${t} Umbraco or system cached entr${t === 1 ? "y" : "ies"} from ${e.displayName}? Your project's own keys are left alone. Pages may be slower until these caches rebuild. This cannot be undone.`, "Clear system cache") && await i(this, s, v).call(this, () => c(this, u).clearSystem(e.store), "Umbraco & system cache was cleared.");
+re = async function(e) {
+  const t = n(this, i, K).call(this, e);
+  await n(this, i, b).call(this, "Clear Umbraco & system cache", `Remove ${t} Umbraco or system cached entr${t === 1 ? "y" : "ies"} from ${e.displayName}? Your project's own keys are left alone. Pages may be slower until these caches rebuild. This cannot be undone.`, "Clear system cache") && await n(this, i, C).call(this, () => h(this, p).clearSystem(e.store), "Umbraco & system cache was cleared.");
 };
-X = async function(e, t) {
-  const a = i(this, s, D).call(this, e, t);
+oe = async function(e, t) {
+  const a = n(this, i, H).call(this, e, t);
   if (a.length === 0) return;
-  const n = t ? "Umbraco & system cache" : "your cache";
-  if (await i(this, s, w).call(this, "Clear selected cache entries", `Remove ${a.length} selected entr${a.length === 1 ? "y" : "ies"} from ${n} in ${e.displayName}?` + (t ? ` ${a.length === 1 ? "It is an" : "These are"} Umbraco or system ${a.length === 1 ? "key" : "keys"}.` : "") + " This cannot be undone.", "Clear selected")) {
+  const s = t ? "Umbraco & system cache" : "your cache";
+  if (await n(this, i, b).call(this, "Clear selected cache entries", `Remove ${a.length} selected entr${a.length === 1 ? "y" : "ies"} from ${s} in ${e.displayName}?` + (t ? ` ${a.length === 1 ? "It is an" : "These are"} Umbraco or system ${a.length === 1 ? "key" : "keys"}.` : "") + " This cannot be undone.", "Clear selected")) {
     this._working = !0;
     try {
-      const r = await c(this, u).clearKeys(a);
-      i(this, s, F).call(this, r.message ?? "Selected entries cleared."), await i(this, s, $).call(this), this._selected = pe(this._selected, a, r.failed ?? []);
-    } catch (r) {
-      i(this, s, T).call(this, r);
+      const l = await h(this, p).clearKeys(a);
+      n(this, i, W).call(this, l.message ?? "Selected entries cleared."), await n(this, i, $).call(this), this._selected = $e(this._selected, a, l.failed ?? []);
+    } catch (l) {
+      n(this, i, P).call(this, l);
     } finally {
       this._working = !1;
     }
   }
 };
-G = async function() {
-  await i(this, s, w).call(this, "Clear entire cache", "Clear EVERY entry in both stores, including Umbraco's own caches? Pages may be slower until caches rebuild. This cannot be undone.", "Clear everything") && await i(this, s, v).call(this, () => c(this, u).clearAll(), "All caches cleared.");
+le = async function() {
+  await n(this, i, b).call(this, "Clear entire cache", "Clear EVERY entry in both stores, including Umbraco's own caches? Pages may be slower until caches rebuild. This cannot be undone.", "Clear everything") && await n(this, i, C).call(this, () => h(this, p).clearAll(), "All caches cleared.");
 };
-J = function(e) {
+ce = function(e) {
   if (!e.keysAvailable)
-    return l`
+    return c`
         <uui-box headline=${e.displayName}>
-          ${i(this, s, M).call(this, e)}
+          ${n(this, i, A).call(this, e)}
           <p class="note">${e.note ?? "Keys could not be enumerated on this runtime."}</p>
         </uui-box>
       `;
-  const t = i(this, s, I).call(this, e), a = i(this, s, A).call(this, e);
-  return l`
+  const t = n(this, i, O).call(this, e), a = n(this, i, R).call(this, e);
+  return c`
       <uui-box headline=${e.displayName}>
-        ${i(this, s, M).call(this, e)}
+        ${n(this, i, A).call(this, e)}
 
         <div class="section-head">
           <h4>Your cache (${t.length})</h4>
           <div class="section-actions">
-            ${i(this, s, S).call(this, e, !1)}
+            ${n(this, i, U).call(this, e, !1)}
             <uui-button
               look="secondary"
               color="danger"
               label="Clear your cache"
-              .disabled=${this._working || i(this, s, P).call(this, e) === 0}
-              @click=${() => i(this, s, B).call(this, e)}
+              .disabled=${this._working || n(this, i, F).call(this, e) === 0}
+              @click=${() => n(this, i, ne).call(this, e)}
             >
               Clear your cache
             </uui-button>
           </div>
         </div>
 
-        ${t.length === 0 ? l`<p class="note">No keys from your project to show.</p>` : i(this, s, U).call(this, e, t)}
+        ${t.length === 0 ? c`<p class="note">No keys from your project to show.</p>` : n(this, i, N).call(this, e, t, !1)}
 
         <details class="system">
           <!-- The <summary> IS this section's head — same flex row, same <h4> as "Your cache"
@@ -334,53 +424,53 @@ J = function(e) {
                  keypress. -->
             <span
               class="section-actions"
-              @click=${(n) => n.stopPropagation()}
+              @click=${(s) => s.stopPropagation()}
             >
-              ${i(this, s, S).call(this, e, !0)}
+              ${n(this, i, U).call(this, e, !0)}
               <uui-button
                 look="secondary"
                 color="danger"
                 label="Clear system cache"
-                .disabled=${this._working || i(this, s, R).call(this, e) === 0}
-                @click=${() => i(this, s, q).call(this, e)}
+                .disabled=${this._working || n(this, i, K).call(this, e) === 0}
+                @click=${() => n(this, i, re).call(this, e)}
               >
                 Clear system cache
               </uui-button>
             </span>
           </summary>
-          ${a.length === 0 ? l`<p class="note">No Umbraco or system keys to show.</p>` : i(this, s, U).call(this, e, a)}
+          ${a.length === 0 ? c`<p class="note">No Umbraco or system keys to show.</p>` : n(this, i, N).call(this, e, a, !0)}
         </details>
       </uui-box>
     `;
 };
-S = function(e, t) {
-  const a = i(this, s, D).call(this, e, t).length;
-  return l`
+U = function(e, t) {
+  const a = n(this, i, H).call(this, e, t).length;
+  return c`
       <uui-button
         look="secondary"
         color="danger"
         label="Clear selected"
         .disabled=${this._working || a === 0}
-        @click=${() => i(this, s, X).call(this, e, t)}
+        @click=${() => n(this, i, oe).call(this, e, t)}
       >
         Clear selected (${a})
       </uui-button>
     `;
 };
-M = function(e) {
-  return e.description ? l`<span slot="headline" class="store-description">${e.description}</span>` : j;
+A = function(e) {
+  return e.description ? c`<span slot="headline" class="store-description">${e.description}</span>` : z;
 };
-U = function(e, t) {
-  const a = t.filter((o) => i(this, s, x).call(this, e.store, o.key)).length, n = t.length > 0 && a === t.length;
-  return l`
+N = function(e, t, a) {
+  const s = be(t, this._pages[n(this, i, L).call(this, e, a)] ?? 0), r = s.items.filter((o) => n(this, i, S).call(this, e.store, o.key)).length, l = s.items.length > 0 && r === s.items.length;
+  return c`
       <uui-table>
         <uui-table-head>
           <uui-table-head-cell class="pick">
             <uui-checkbox
               aria-label="Select all shown"
-              .checked=${n}
-              .indeterminate=${a > 0 && !n}
-              @change=${(o) => i(this, s, W).call(this, e, t, o.target.checked)}
+              .checked=${l}
+              .indeterminate=${r > 0 && !l}
+              @change=${(o) => n(this, i, se).call(this, e, s.items, o.target.checked)}
             ></uui-checkbox>
           </uui-table-head-cell>
           <uui-table-head-cell>Key</uui-table-head-cell>
@@ -388,28 +478,33 @@ U = function(e, t) {
           <uui-table-head-cell>Expires</uui-table-head-cell>
           <uui-table-head-cell></uui-table-head-cell>
         </uui-table-head>
-        ${K(
-    t,
+        ${X(
+    s.items,
     (o) => o.key,
-    (o) => l`
+    (o) => c`
             <uui-table-row>
               <uui-table-cell class="pick">
                 <uui-checkbox
                   aria-label="Select ${o.key}"
-                  .checked=${i(this, s, x).call(this, e.store, o.key)}
-                  @change=${(r) => i(this, s, H).call(this, e.store, o.key, r.target.checked)}
+                  .checked=${n(this, i, S).call(this, e.store, o.key)}
+                  @change=${(y) => n(this, i, ae).call(this, e.store, o.key, y.target.checked)}
                 ></uui-checkbox>
               </uui-table-cell>
               <uui-table-cell><span class="key">${o.key}</span></uui-table-cell>
               <uui-table-cell>${o.valueType ?? "—"}</uui-table-cell>
-              <uui-table-cell class="expires">${i(this, s, V).call(this, o)}</uui-table-cell>
+              <uui-table-cell class="expires">
+                <cache-manager-expiry
+                  .expiresAt=${o.expiresAt}
+                  .kind=${o.expiryKind}
+                ></cache-manager-expiry>
+              </uui-table-cell>
               <uui-table-cell class="actions">
                 <uui-button
                   look="secondary"
                   color="danger"
                   label="Clear ${o.key}"
                   .disabled=${this._working}
-                  @click=${() => i(this, s, Y).call(this, e, o)}
+                  @click=${() => n(this, i, ie).call(this, e, o)}
                 >
                   Clear
                 </uui-button>
@@ -418,19 +513,25 @@ U = function(e, t) {
           `
   )}
       </uui-table>
+      ${n(this, i, he).call(this, e, a, s)}
     `;
 };
-V = function(e) {
-  const t = re(e.expiresAt, this._now), a = le(t, e.expiryKind), n = ce(t, e.expiryKind);
-  return l`
-      <span class=${n ? "expiry soon" : "expiry"}>${a}</span>
-      ${e.expiryKind === "sliding" ? l`<span
-            class="sliding"
-            title="The clock resets each time the entry is read"
-          >(sliding)</span>` : j}
+he = function(e, t, a) {
+  return a.pageCount <= 1 ? z : c`
+      <div class="pager">
+        <uui-pagination
+          label=${`${e.displayName}, ${t ? "Umbraco & system cache" : "your cache"}`}
+          .total=${a.pageCount}
+          .current=${a.page + 1}
+          @change=${(s) => (
+    // uui-pagination counts from 1, _pages from 0. This is the only place the two meet.
+    n(this, i, ee).call(this, e, t, s.target.current - 1)
+  )}
+        ></uui-pagination>
+      </div>
     `;
 };
-h.styles = te`
+u.styles = Y`
     :host {
       display: block;
     }
@@ -540,20 +641,30 @@ h.styles = te`
     }
     .expires {
       /* Countdown and its "(sliding)" note are one reading — keep them on a single line rather
-         than letting the note drop under the time and make the row twice as tall. */
+         than letting the note drop under the time and make the row twice as tall. The countdown's
+         own text styling lives in cacheExpiry.element.ts: shadow DOM encapsulates it, so this
+         stylesheet cannot reach inside <cache-manager-expiry>. */
       white-space: nowrap;
     }
-    .expiry {
-      font-variant-numeric: tabular-nums;
+    .pager {
+      /* The grey band the backoffice's own pagers sit on. They get it for free by sitting on the
+         page background; ours is inside a uui-box, whose surface is white, so the band has to be
+         drawn here. Both are TOKENS, not literals: surface-alt is #f3f3f5 in the light theme and
+         #373e47 in the dark one, so hardcoding the grey would break dark mode.
+
+         The padding lives on this wrapper rather than on uui-pagination itself: the element sizes
+         its visible page buttons from its own offsetWidth, which INCLUDES its padding, so padding
+         it directly would have it claim ~24px it cannot draw in and fit one button too many. */
+      background-color: var(--uui-color-surface-alt);
+      border-top: 1px solid var(--uui-color-divider-standalone);
+      padding: var(--uui-size-space-4);
+      margin-top: var(--uui-size-layout-1);
     }
-    .expiry.soon {
-      color: var(--uui-color-danger);
-      font-weight: bold;
-    }
-    .sliding {
-      color: var(--uui-color-text-alt);
-      font-size: var(--uui-type-small-size);
-      margin-left: var(--uui-size-space-2);
+    uui-pagination {
+      /* Block, matching the backoffice's own umb-collection-pagination. Load-bearing as well as
+         conventional: the element declares no :host display of its own, and shrink-wrapped it would
+         measure the buttons it already has instead of the space available to it. */
+      display: block;
     }
     .pick {
       /* Shrink-to-fit: the column holds a bare checkbox, so it must not claim a share of the
@@ -571,28 +682,28 @@ h.styles = te`
       text-align: right;
     }
   `;
-p([
-  y()
-], h.prototype, "_loading", 2);
-p([
-  y()
-], h.prototype, "_working", 2);
-p([
-  y()
-], h.prototype, "_stores", 2);
-p([
-  y()
-], h.prototype, "_filter", 2);
-p([
-  y()
-], h.prototype, "_selected", 2);
-p([
-  y()
-], h.prototype, "_now", 2);
-h = p([
-  ae("cache-manager-dashboard")
-], h);
+m([
+  f()
+], u.prototype, "_loading", 2);
+m([
+  f()
+], u.prototype, "_working", 2);
+m([
+  f()
+], u.prototype, "_stores", 2);
+m([
+  f()
+], u.prototype, "_filter", 2);
+m([
+  f()
+], u.prototype, "_selected", 2);
+m([
+  f()
+], u.prototype, "_pages", 2);
+u = m([
+  G("cache-manager-dashboard")
+], u);
 export {
-  h as CacheManagerDashboardElement
+  u as CacheManagerDashboardElement
 };
 //# sourceMappingURL=cacheManager.element.js.map

@@ -13,7 +13,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>Umb.CacheManager</PackageId>
     
-    <Version>17.1.2</Version>
+    <Version>17.2.0</Version>
     <Title>Cache Manager</Title>
     <Description>Backoffice dashboard for Umbraco 17 and later to view and clear the site's in-process caches (Umbraco RuntimeCache and ASP.NET Core IMemoryCache).</Description>
     <Authors>Giriraj Digital</Authors>
@@ -25,9 +25,9 @@
     <!-- Rewrite for every <Version> bump — NuGet shows whatever is here against the version
          being published, so stale notes describe the wrong release. -->
     <PackageReleaseNotes>
-17.1.2
-- Supports Umbraco 17 and all later versions (verified on Umbraco 17 and 18).
-- Added package icon, licence, README and copyright metadata.
+17.2.0
+- Introduced pagination for sections with a large number of items, improving performance
+  and usability when managing content.
     </PackageReleaseNotes>
 
     <!-- nuget.org rejects/warns on packages without these. LICENSE (MIT) and README.md live in
