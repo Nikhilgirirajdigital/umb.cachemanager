@@ -16,10 +16,6 @@ export interface Page<T> {
   /** The requested index after clamping — callers should render from this, not from their input. */
   page: number;
   pageCount: number;
-  /** 1-based inclusive display range; both 0 when there is nothing to show. */
-  from: number;
-  to: number;
-  total: number;
 }
 
 /**
@@ -34,19 +30,16 @@ export function pageOf<T>(
   page: number,
   size: number = PAGE_SIZE
 ): Page<T> {
-  const total = items.length;
-  // An empty section still renders its head and pager, so it is one empty page, not zero pages.
-  const pageCount = Math.max(1, Math.ceil(total / size));
+  // An empty section still renders its head, so it is one empty page, not zero pages.
+  const pageCount = Math.max(1, Math.ceil(items.length / size));
   const clamped = Math.min(Math.max(page, 0), pageCount - 1);
   const start = clamped * size;
-  const slice = items.slice(start, start + size);
 
   return {
-    items: slice,
+    items: items.slice(start, start + size),
+    // 0-based, matching the `_pages` record. <uui-pagination> counts from 1; the dashboard converts
+    // at that one boundary rather than making every index here ambiguous.
     page: clamped,
     pageCount,
-    from: total === 0 ? 0 : start + 1,
-    to: total === 0 ? 0 : start + slice.length,
-    total,
   };
 }
