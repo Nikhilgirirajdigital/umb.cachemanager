@@ -1,9 +1,9 @@
 import { UmbLitElement as de } from "@umbraco-cms/backoffice/lit-element";
 import { css as Y, property as q, state as f, customElement as G, LitElement as pe, nothing as z, html as c, repeat as X } from "@umbraco-cms/backoffice/external/lit";
 import { UMB_AUTH_CONTEXT as fe } from "@umbraco-cms/backoffice/auth";
-import { UMB_NOTIFICATION_CONTEXT as me } from "@umbraco-cms/backoffice/notification";
-import { umbConfirmModal as ye } from "@umbraco-cms/backoffice/modal";
-const g = "/umbraco/management/api/v1/cache-manager";
+import { UMB_NOTIFICATION_CONTEXT as ye } from "@umbraco-cms/backoffice/notification";
+import { umbConfirmModal as me } from "@umbraco-cms/backoffice/modal";
+const m = "/umbraco/management/api/v1/cache-manager";
 class ge {
   #t;
   constructor(t) {
@@ -14,13 +14,13 @@ class ge {
     return a && (t.Authorization = `Bearer ${a}`), t;
   }
   async getCaches() {
-    const t = await fetch(`${g}/caches`, { headers: await this.#e() });
+    const t = await fetch(`${m}/caches`, { headers: await this.#e() });
     if (!t.ok)
       throw new Error(`Failed to load caches (HTTP ${t.status}).`);
     return await t.json();
   }
   async clearKey(t, a) {
-    const s = `store=${encodeURIComponent(t)}&key=${encodeURIComponent(a)}`, r = await fetch(`${g}/key?${s}`, {
+    const s = `store=${encodeURIComponent(t)}&key=${encodeURIComponent(a)}`, r = await fetch(`${m}/key?${s}`, {
       method: "DELETE",
       headers: await this.#e()
     });
@@ -34,7 +34,7 @@ class ge {
    * cost 2N, and a mid-loop failure would leave the view inconsistent until the next refresh.
    */
   async clearKeys(t) {
-    const a = await fetch(`${g}/keys`, {
+    const a = await fetch(`${m}/keys`, {
       method: "DELETE",
       headers: { ...await this.#e(), "Content-Type": "application/json" },
       body: JSON.stringify({ items: t })
@@ -44,7 +44,7 @@ class ge {
     return await a.json();
   }
   async clearAll() {
-    const t = await fetch(`${g}/all`, {
+    const t = await fetch(`${m}/all`, {
       method: "DELETE",
       headers: await this.#e()
     });
@@ -53,7 +53,7 @@ class ge {
     return await t.json();
   }
   async clearCustom(t) {
-    const a = t ? `?store=${encodeURIComponent(t)}` : "", s = await fetch(`${g}/custom${a}`, {
+    const a = t ? `?store=${encodeURIComponent(t)}` : "", s = await fetch(`${m}/custom${a}`, {
       method: "DELETE",
       headers: await this.#e()
     });
@@ -66,7 +66,7 @@ class ge {
    * remove entries it can enumerate, where clearAll uses each store's native Clear().
    */
   async clearSystem(t) {
-    const a = t ? `?store=${encodeURIComponent(t)}` : "", s = await fetch(`${g}/system${a}`, {
+    const a = t ? `?store=${encodeURIComponent(t)}` : "", s = await fetch(`${m}/system${a}`, {
       method: "DELETE",
       headers: await this.#e()
     });
@@ -77,14 +77,13 @@ class ge {
 }
 const we = 50;
 function be(e, t, a = we) {
-  const s = e.length, r = Math.max(1, Math.ceil(s / a)), l = Math.min(Math.max(t, 0), r - 1), o = l * a, y = e.slice(o, o + a);
+  const s = Math.max(1, Math.ceil(e.length / a)), r = Math.min(Math.max(t, 0), s - 1), o = r * a;
   return {
-    items: y,
-    page: l,
-    pageCount: r,
-    from: s === 0 ? 0 : o + 1,
-    to: s === 0 ? 0 : o + y.length,
-    total: s
+    items: e.slice(o, o + a),
+    // 0-based, matching the `_pages` record. <uui-pagination> counts from 1; the dashboard converts
+    // at that one boundary rather than making every index here ambiguous.
+    page: r,
+    pageCount: s
   };
 }
 const ke = "\0", d = (e, t) => `${e}${ke}${t}`;
@@ -119,45 +118,45 @@ function xe(e, t) {
   if (a < 60) return `${a}s`;
   const s = Math.floor(a / 60), r = a % 60;
   if (s < 60) return `${s}m ${String(r).padStart(2, "0")}s`;
-  const l = Math.floor(s / 60), o = s % 60;
-  if (l < 24) return `${l}h ${o}m`;
-  const y = Math.floor(l / 24), ue = l % 24;
-  return `${y}d ${ue}h`;
+  const o = Math.floor(s / 60), l = s % 60;
+  if (o < 24) return `${o}h ${l}m`;
+  const P = Math.floor(o / 24), ue = o % 24;
+  return `${P}d ${ue}h`;
 }
 function Te(e, t) {
   return t === "none" || t === "unknown" || e === null ? !1 : e > 0 && e < 6e4;
 }
-const x = /* @__PURE__ */ new Set();
-let T;
+const C = /* @__PURE__ */ new Set();
+let x;
 function Ee(e) {
-  x.add(e), T ??= setInterval(() => {
-    for (const a of [...x])
+  C.add(e), x ??= setInterval(() => {
+    for (const a of [...C])
       a();
   }, 1e3);
   let t = !1;
   return () => {
-    t || (t = !0, x.delete(e), x.size === 0 && T !== void 0 && (clearInterval(T), T = void 0));
+    t || (t = !0, C.delete(e), C.size === 0 && x !== void 0 && (clearInterval(x), x = void 0));
   };
 }
 var Se = Object.defineProperty, Me = Object.getOwnPropertyDescriptor, J = (e) => {
   throw TypeError(e);
-}, M = (e, t, a, s) => {
-  for (var r = s > 1 ? void 0 : s ? Me(t, a) : t, l = e.length - 1, o; l >= 0; l--)
-    (o = e[l]) && (r = (s ? o(t, a, r) : o(r)) || r);
+}, S = (e, t, a, s) => {
+  for (var r = s > 1 ? void 0 : s ? Me(t, a) : t, o = e.length - 1, l; o >= 0; o--)
+    (l = e[o]) && (r = (s ? l(t, a, r) : l(r)) || r);
   return s && r && Se(t, a, r), r;
-}, V = (e, t, a) => t.has(e) || J("Cannot " + a), Pe = (e, t, a) => (V(e, t, "read from private field"), a ? a.call(e) : t.get(e)), Ue = (e, t, a) => t.has(e) ? J("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), j = (e, t, a, s) => (V(e, t, "write to private field"), t.set(e, a), a), k;
-let w = class extends pe {
+}, V = (e, t, a) => t.has(e) || J("Cannot " + a), Pe = (e, t, a) => (V(e, t, "read from private field"), a ? a.call(e) : t.get(e)), Ue = (e, t, a) => t.has(e) ? J("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), j = (e, t, a, s) => (V(e, t, "write to private field"), t.set(e, a), a), b;
+let g = class extends pe {
   constructor() {
-    super(...arguments), this.kind = "unknown", this._now = Date.now(), Ue(this, k);
+    super(...arguments), this.kind = "unknown", this._now = Date.now(), Ue(this, b);
   }
   connectedCallback() {
-    super.connectedCallback(), this._now = Date.now(), j(this, k, Ee(() => {
+    super.connectedCallback(), this._now = Date.now(), j(this, b, Ee(() => {
       this._now = Date.now();
     }));
   }
   disconnectedCallback() {
     var e;
-    (e = Pe(this, k)) == null || e.call(this), j(this, k, void 0), super.disconnectedCallback();
+    (e = Pe(this, b)) == null || e.call(this), j(this, b, void 0), super.disconnectedCallback();
   }
   render() {
     const e = Ce(this.expiresAt, this._now);
@@ -171,8 +170,8 @@ let w = class extends pe {
     `;
   }
 };
-k = /* @__PURE__ */ new WeakMap();
-w.styles = Y`
+b = /* @__PURE__ */ new WeakMap();
+g.styles = Y`
     :host {
       /* Countdown and its "(sliding)" note are one reading — keep them on a single line rather
          than letting the note drop under the time and make the row twice as tall. */
@@ -191,35 +190,35 @@ w.styles = Y`
       margin-left: var(--uui-size-space-2);
     }
   `;
-M([
+S([
   q({ attribute: !1 })
-], w.prototype, "expiresAt", 2);
-M([
+], g.prototype, "expiresAt", 2);
+S([
   q({ attribute: !1 })
-], w.prototype, "kind", 2);
-M([
+], g.prototype, "kind", 2);
+S([
   f()
-], w.prototype, "_now", 2);
-w = M([
+], g.prototype, "_now", 2);
+g = S([
   G("cache-manager-expiry")
-], w);
+], g);
 var Ae = Object.defineProperty, Ne = Object.getOwnPropertyDescriptor, Z = (e) => {
   throw TypeError(e);
-}, m = (e, t, a, s) => {
-  for (var r = s > 1 ? void 0 : s ? Ne(t, a) : t, l = e.length - 1, o; l >= 0; l--)
-    (o = e[l]) && (r = (s ? o(t, a, r) : o(r)) || r);
+}, y = (e, t, a, s) => {
+  for (var r = s > 1 ? void 0 : s ? Ne(t, a) : t, o = e.length - 1, l; o >= 0; o--)
+    (l = e[o]) && (r = (s ? l(t, a, r) : l(r)) || r);
   return s && r && Ae(t, a, r), r;
-}, I = (e, t, a) => t.has(e) || Z("Cannot " + a), h = (e, t, a) => (I(e, t, "read from private field"), a ? a.call(e) : t.get(e)), E = (e, t, a) => t.has(e) ? Z("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), B = (e, t, a, s) => (I(e, t, "write to private field"), t.set(e, a), a), n = (e, t, a) => (I(e, t, "access private method"), a), p, _, v, i, Q, $, D, O, R, L, ee, te, F, K, S, ae, se, H, W, P, b, C, ie, ne, re, oe, le, ce, U, A, N, he;
+}, I = (e, t, a) => t.has(e) || Z("Cannot " + a), h = (e, t, a) => (I(e, t, "read from private field"), a ? a.call(e) : t.get(e)), T = (e, t, a) => t.has(e) ? Z("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), B = (e, t, a, s) => (I(e, t, "write to private field"), t.set(e, a), a), n = (e, t, a) => (I(e, t, "access private method"), a), p, k, _, i, Q, v, D, O, R, L, ee, te, F, K, E, ae, se, H, W, M, w, $, ie, ne, re, oe, le, ce, U, A, N, he;
 let u = class extends de {
   constructor() {
-    super(), E(this, i), this._loading = !0, this._working = !1, this._stores = [], this._filter = "", this._selected = /* @__PURE__ */ new Set(), this._pages = {}, E(this, p, new ge(() => n(this, i, Q).call(this))), E(this, _), E(this, v), this.consumeContext(fe, (e) => {
+    super(), T(this, i), this._loading = !0, this._working = !1, this._stores = [], this._filter = "", this._selected = /* @__PURE__ */ new Set(), this._pages = {}, T(this, p, new ge(() => n(this, i, Q).call(this))), T(this, k), T(this, _), this.consumeContext(fe, (e) => {
+      B(this, k, e);
+    }), this.consumeContext(ye, (e) => {
       B(this, _, e);
-    }), this.consumeContext(me, (e) => {
-      B(this, v, e);
     });
   }
   connectedCallback() {
-    super.connectedCallback(), n(this, i, $).call(this);
+    super.connectedCallback(), n(this, i, v).call(this);
   }
   render() {
     return c`
@@ -238,7 +237,7 @@ let u = class extends de {
             look="secondary"
             label="Refresh"
             .disabled=${this._working}
-            @click=${() => n(this, i, $).call(this)}
+            @click=${() => n(this, i, v).call(this)}
           >
             <uui-icon name="icon-sync"></uui-icon> Refresh
           </uui-button>
@@ -264,18 +263,18 @@ let u = class extends de {
   }
 };
 p = /* @__PURE__ */ new WeakMap();
+k = /* @__PURE__ */ new WeakMap();
 _ = /* @__PURE__ */ new WeakMap();
-v = /* @__PURE__ */ new WeakMap();
 i = /* @__PURE__ */ new WeakSet();
 Q = async function() {
-  return h(this, _) ? await h(this, _).getLatestToken() : void 0;
+  return h(this, k) ? await h(this, k).getLatestToken() : void 0;
 };
-$ = async function() {
+v = async function() {
   this._loading = !0;
   try {
     this._stores = await h(this, p).getCaches(), this._selected = _e(this._selected, this._stores);
   } catch (e) {
-    n(this, i, P).call(this, e);
+    n(this, i, M).call(this, e);
   } finally {
     this._loading = !1;
   }
@@ -307,7 +306,7 @@ F = function(e) {
 K = function(e) {
   return e.entries.filter((t) => t.isSystem).length;
 };
-S = function(e, t) {
+E = function(e, t) {
   return this._selected.has(d(e, t));
 };
 ae = function(e, t, a) {
@@ -317,68 +316,68 @@ ae = function(e, t, a) {
 se = function(e, t, a) {
   const s = new Set(this._selected);
   for (const r of t) {
-    const l = d(e.store, r.key);
-    a ? s.add(l) : s.delete(l);
+    const o = d(e.store, r.key);
+    a ? s.add(o) : s.delete(o);
   }
   this._selected = s;
 };
 H = function(e, t) {
-  return (t ? n(this, i, R).call(this, e) : n(this, i, O).call(this, e)).filter((s) => n(this, i, S).call(this, e.store, s.key)).map((s) => ({ store: e.store, key: s.key }));
+  return (t ? n(this, i, R).call(this, e) : n(this, i, O).call(this, e)).filter((s) => n(this, i, E).call(this, e.store, s.key)).map((s) => ({ store: e.store, key: s.key }));
 };
 W = function(e) {
-  h(this, v)?.peek("positive", { data: { message: e } });
+  h(this, _)?.peek("positive", { data: { message: e } });
 };
-P = function(e) {
+M = function(e) {
   const t = e instanceof Error ? e.message : "Something went wrong.";
-  h(this, v)?.peek("danger", { data: { message: t } });
+  h(this, _)?.peek("danger", { data: { message: t } });
 };
-b = async function(e, t, a) {
+w = async function(e, t, a) {
   try {
-    return await ye(this, { headline: e, content: t, confirmLabel: a, color: "danger" }), !0;
+    return await me(this, { headline: e, content: t, confirmLabel: a, color: "danger" }), !0;
   } catch {
     return !1;
   }
 };
-C = async function(e, t) {
+$ = async function(e, t) {
   this._working = !0;
   try {
     const a = await e();
-    n(this, i, W).call(this, a.message ?? t), await n(this, i, $).call(this);
+    n(this, i, W).call(this, a.message ?? t), await n(this, i, v).call(this);
   } catch (a) {
-    n(this, i, P).call(this, a);
+    n(this, i, M).call(this, a);
   } finally {
     this._working = !1;
   }
 };
 ie = async function(e, t) {
-  await n(this, i, b).call(this, "Clear cache entry", `Remove '${t.key}' from ${e.displayName}? This cannot be undone.`, "Clear") && await n(this, i, C).call(this, () => h(this, p).clearKey(e.store, t.key), "Entry cleared.");
+  await n(this, i, w).call(this, "Clear cache entry", `Remove '${t.key}' from ${e.displayName}? This cannot be undone.`, "Clear") && await n(this, i, $).call(this, () => h(this, p).clearKey(e.store, t.key), "Entry cleared.");
 };
 ne = async function(e) {
   const t = n(this, i, F).call(this, e);
-  await n(this, i, b).call(this, "Clear your cache", `Remove your project's ${t} cached entr${t === 1 ? "y" : "ies"} from ${e.displayName}? Umbraco's own caches are left alone. This cannot be undone.`, "Clear your cache") && await n(this, i, C).call(this, () => h(this, p).clearCustom(e.store), "Your cache was cleared.");
+  await n(this, i, w).call(this, "Clear your cache", `Remove your project's ${t} cached entr${t === 1 ? "y" : "ies"} from ${e.displayName}? Umbraco's own caches are left alone. This cannot be undone.`, "Clear your cache") && await n(this, i, $).call(this, () => h(this, p).clearCustom(e.store), "Your cache was cleared.");
 };
 re = async function(e) {
   const t = n(this, i, K).call(this, e);
-  await n(this, i, b).call(this, "Clear Umbraco & system cache", `Remove ${t} Umbraco or system cached entr${t === 1 ? "y" : "ies"} from ${e.displayName}? Your project's own keys are left alone. Pages may be slower until these caches rebuild. This cannot be undone.`, "Clear system cache") && await n(this, i, C).call(this, () => h(this, p).clearSystem(e.store), "Umbraco & system cache was cleared.");
+  await n(this, i, w).call(this, "Clear Umbraco & system cache", `Remove ${t} Umbraco or system cached entr${t === 1 ? "y" : "ies"} from ${e.displayName}? Your project's own keys are left alone. Pages may be slower until these caches rebuild. This cannot be undone.`, "Clear system cache") && await n(this, i, $).call(this, () => h(this, p).clearSystem(e.store), "Umbraco & system cache was cleared.");
 };
 oe = async function(e, t) {
   const a = n(this, i, H).call(this, e, t);
   if (a.length === 0) return;
   const s = t ? "Umbraco & system cache" : "your cache";
-  if (await n(this, i, b).call(this, "Clear selected cache entries", `Remove ${a.length} selected entr${a.length === 1 ? "y" : "ies"} from ${s} in ${e.displayName}?` + (t ? ` ${a.length === 1 ? "It is an" : "These are"} Umbraco or system ${a.length === 1 ? "key" : "keys"}.` : "") + " This cannot be undone.", "Clear selected")) {
+  if (await n(this, i, w).call(this, "Clear selected cache entries", `Remove ${a.length} selected entr${a.length === 1 ? "y" : "ies"} from ${s} in ${e.displayName}?` + (t ? ` ${a.length === 1 ? "It is an" : "These are"} Umbraco or system ${a.length === 1 ? "key" : "keys"}.` : "") + " This cannot be undone.", "Clear selected")) {
     this._working = !0;
     try {
-      const l = await h(this, p).clearKeys(a);
-      n(this, i, W).call(this, l.message ?? "Selected entries cleared."), await n(this, i, $).call(this), this._selected = $e(this._selected, a, l.failed ?? []);
-    } catch (l) {
-      n(this, i, P).call(this, l);
+      const o = await h(this, p).clearKeys(a);
+      n(this, i, W).call(this, o.message ?? "Selected entries cleared."), await n(this, i, v).call(this), this._selected = $e(this._selected, a, o.failed ?? []);
+    } catch (o) {
+      n(this, i, M).call(this, o);
     } finally {
       this._working = !1;
     }
   }
 };
 le = async function() {
-  await n(this, i, b).call(this, "Clear entire cache", "Clear EVERY entry in both stores, including Umbraco's own caches? Pages may be slower until caches rebuild. This cannot be undone.", "Clear everything") && await n(this, i, C).call(this, () => h(this, p).clearAll(), "All caches cleared.");
+  await n(this, i, w).call(this, "Clear entire cache", "Clear EVERY entry in both stores, including Umbraco's own caches? Pages may be slower until caches rebuild. This cannot be undone.", "Clear everything") && await n(this, i, $).call(this, () => h(this, p).clearAll(), "All caches cleared.");
 };
 ce = function(e) {
   if (!e.keysAvailable)
@@ -461,16 +460,16 @@ A = function(e) {
   return e.description ? c`<span slot="headline" class="store-description">${e.description}</span>` : z;
 };
 N = function(e, t, a) {
-  const s = be(t, this._pages[n(this, i, L).call(this, e, a)] ?? 0), r = s.items.filter((o) => n(this, i, S).call(this, e.store, o.key)).length, l = s.items.length > 0 && r === s.items.length;
+  const s = be(t, this._pages[n(this, i, L).call(this, e, a)] ?? 0), r = s.items.filter((l) => n(this, i, E).call(this, e.store, l.key)).length, o = s.items.length > 0 && r === s.items.length;
   return c`
       <uui-table>
         <uui-table-head>
           <uui-table-head-cell class="pick">
             <uui-checkbox
               aria-label="Select all shown"
-              .checked=${l}
-              .indeterminate=${r > 0 && !l}
-              @change=${(o) => n(this, i, se).call(this, e, s.items, o.target.checked)}
+              .checked=${o}
+              .indeterminate=${r > 0 && !o}
+              @change=${(l) => n(this, i, se).call(this, e, s.items, l.target.checked)}
             ></uui-checkbox>
           </uui-table-head-cell>
           <uui-table-head-cell>Key</uui-table-head-cell>
@@ -480,31 +479,31 @@ N = function(e, t, a) {
         </uui-table-head>
         ${X(
     s.items,
-    (o) => o.key,
-    (o) => c`
+    (l) => l.key,
+    (l) => c`
             <uui-table-row>
               <uui-table-cell class="pick">
                 <uui-checkbox
-                  aria-label="Select ${o.key}"
-                  .checked=${n(this, i, S).call(this, e.store, o.key)}
-                  @change=${(y) => n(this, i, ae).call(this, e.store, o.key, y.target.checked)}
+                  aria-label="Select ${l.key}"
+                  .checked=${n(this, i, E).call(this, e.store, l.key)}
+                  @change=${(P) => n(this, i, ae).call(this, e.store, l.key, P.target.checked)}
                 ></uui-checkbox>
               </uui-table-cell>
-              <uui-table-cell><span class="key">${o.key}</span></uui-table-cell>
-              <uui-table-cell>${o.valueType ?? "—"}</uui-table-cell>
+              <uui-table-cell><span class="key">${l.key}</span></uui-table-cell>
+              <uui-table-cell>${l.valueType ?? "—"}</uui-table-cell>
               <uui-table-cell class="expires">
                 <cache-manager-expiry
-                  .expiresAt=${o.expiresAt}
-                  .kind=${o.expiryKind}
+                  .expiresAt=${l.expiresAt}
+                  .kind=${l.expiryKind}
                 ></cache-manager-expiry>
               </uui-table-cell>
               <uui-table-cell class="actions">
                 <uui-button
                   look="secondary"
                   color="danger"
-                  label="Clear ${o.key}"
+                  label="Clear ${l.key}"
                   .disabled=${this._working}
-                  @click=${() => n(this, i, ie).call(this, e, o)}
+                  @click=${() => n(this, i, ie).call(this, e, l)}
                 >
                   Clear
                 </uui-button>
@@ -682,25 +681,25 @@ u.styles = Y`
       text-align: right;
     }
   `;
-m([
+y([
   f()
 ], u.prototype, "_loading", 2);
-m([
+y([
   f()
 ], u.prototype, "_working", 2);
-m([
+y([
   f()
 ], u.prototype, "_stores", 2);
-m([
+y([
   f()
 ], u.prototype, "_filter", 2);
-m([
+y([
   f()
 ], u.prototype, "_selected", 2);
-m([
+y([
   f()
 ], u.prototype, "_pages", 2);
-u = m([
+u = y([
   G("cache-manager-dashboard")
 ], u);
 export {
